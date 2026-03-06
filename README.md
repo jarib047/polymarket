@@ -1,12 +1,13 @@
 # Polymarket BTC 5m Monitor
 
-This repo tracks Polymarket **Bitcoin Up/Down 5-minute markets**, stores live best bid/ask quotes, and computes/plots 0.5 crossing statistics.
+This repo tracks Polymarket **Bitcoin Up/Down 5-minute markets**, stores live best bid/ask quotes, computes crossing statistics, and backtests strategy variants.
 
 ## What This Project Does
 - Fetches active BTC 5m token IDs (`up` / `down`) and keeps them in a token cache JSON.
 - Monitors the current 5m market in real time and appends best bid/ask quotes to CSV.
 - Computes crossing metrics (how many times bids cross `0.5`) per 5m event.
 - Generates per-event bid-vs-time plots and summary CSV/JSON outputs.
+- Backtests strategy ideas on complete 5-minute events from monitored quote data.
 
 ## Main Files
 - `build_btc_5m_token_cache.py`
@@ -23,6 +24,15 @@ This repo tracks Polymarket **Bitcoin Up/Down 5-minute markets**, stores live be
   - Writes summary CSV/JSON and per-event PNG plots.
 - `main_improved.py`
   - Utility script to fetch and print active order-book snapshots from token cache.
+- `strategy_utils.py`
+  - Shared helpers for quote parsing, winner inference, and complete-event filtering.
+- `simulate_stage2_bid_trigger_sweep.py`
+  - Backtests Stage2 **bid-trigger** strategy by sweeping threshold values.
+  - Includes sold-winner/sold-loser stats per threshold.
+- `simulate_expensive_open_strategy.py`
+  - Backtests **buy expensive token at open, hold to resolution** strategy.
+- `STRATEGY_CONTEXT.md`
+  - Session context file summarizing strategies explored, what was archived, and current workflow.
 - `redacted/plot_live_btc_5m_quotes.py`
   - Optional static plotting helper.
 - `redacted/animate_live_btc_5m_quotes.py`
@@ -82,7 +92,29 @@ Default outputs created:
 python analyze_event_bid_crossings.py --quotes-csv live_btc_5m_quotes.csv --market-slug btc-updown-5m-<timestamp>
 ```
 
+### 5) Strategy A: Stage2 bid-trigger sweep
+
+Rule:
+- Buy both tokens at event start.
+- Sell first token whose **bid** is below threshold.
+- Hold remaining token to resolution.
+
+```bash
+python simulate_stage2_bid_trigger_sweep.py --only-full-events
+```
+
+### 6) Strategy B: Buy expensive token at open
+
+Rule:
+- At event open, buy only the token with higher opening ask.
+- Hold to resolution.
+
+```bash
+python simulate_expensive_open_strategy.py --only-full-events
+```
+
 ## Notes
 - `best bid` is computed as max bid price and `best ask` as min ask price (order-independent).
 - Network/API read timeouts can occur; monitor script retries and skips failed ticks instead of crashing.
 - This repo is currently focused on **live monitored crossings** (historical trade-level approach removed).
+- Current active strategy work is focused on Stage2 bid-trigger and buy-expensive-at-open.
